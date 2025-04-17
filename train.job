@@ -1,0 +1,49 @@
+#!/bin/bash
+
+#SBATCH --account=general_sa
+#SBATCH --exclusive
+#SBATCH --partition=interactive
+#SBATCH --job-name=general_sa-openrlhf.train
+#SBATCH --mail-type=ALL
+#SBATCH --ntasks-per-node=1
+#SBATCH --nodes=1
+#SBATCH --time=2:00:00
+#SBATCH --output=./slurm/%j.out
+#SBATCH --error=./slurm/%j.err
+
+set -x
+CONTAINER="nvcr.io/r2kuatviomfd/internal-sandbox/torch-python:2.4.0-py3.10-cu12.2-v3"
+# TODO Mount dir
+# CONTAINER="nvcr.io/nvidia/nemo:24.07"
+
+MOUNTS=""
+current_dir=$(pwd)
+MOUNTS+="${current_dir}:/apps"
+
+current_time=$(date +"%Y%m%d_%H%M")
+WBPROJECT=openrlhf_${current_time}
+echo $WBPROJECT
+
+# Necessary Exports
+export HYDRA_FULL_ERROR=1
+#export TRANSFORMERS_OFFLINE=1
+export NCCL_AVOID_RECORD_STREAMS=1
+#export ENROOT_ROOTFS_WRITABLE=1
+
+read -r -d '' cmd <<EOF
+echo "*******STARTING********" \
+&& echo "---------------" \
+&& echo "Starting training" \
+&& mkdir -p /app/openrlhf \
+&& cd /apps \
+&& pip install -e .\
+&& pip install vllm==0.7.3 \
+&& pip install math_verify==0.6.0 \
+&& ray start --head --node-ip-address 0.0.0.0 --num-gpus 8 \
+&& sh examples/scripts/train_distill_grpo_ray_hybrid_engine.sh 
+EOF
+
+
+srun --container-image ${CONTAINER} --container-name ${WBPROJECT} --container-mounts ${MOUNTS} bash -c "${cmd}"
+
+set +x
