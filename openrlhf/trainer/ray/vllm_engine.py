@@ -5,6 +5,7 @@ import ray
 from ray.util.placement_group import placement_group
 from ray.util.scheduling_strategies import PlacementGroupSchedulingStrategy
 from vllm import LLM
+from .utils import get_bundle_indices
 
 from openrlhf.utils.logging_utils import init_logger
 
@@ -131,9 +132,10 @@ def create_vllm_engines(
                 scheduling_strategy = PlacementGroupSchedulingStrategy(
                     placement_group=shared_pg,
                     placement_group_capture_child_tasks=True,
-                    placement_group_bundle_index=i * tensor_parallel_size
+                    placement_group_bundle_index=bundle_indices[0] if bundle_indices else i,
                 )
-                bundle_indices = np.arange(i * tensor_parallel_size, (i + 1) * tensor_parallel_size).tolist()
+                bundle_indices = get_bundle_indices(shared_pg, i, tensor_parallel_size)
+                #bundle_indices = np.arange(i * tensor_parallel_size, (i + 1) * tensor_parallel_size).tolist()
             else:
                 num_gpus = 0.2
                 scheduling_strategy = PlacementGroupSchedulingStrategy(

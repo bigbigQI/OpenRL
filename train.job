@@ -2,17 +2,28 @@
 
 #SBATCH --account=general_sa
 #SBATCH --exclusive
-#SBATCH --partition=interactive
+#SBATCH --partition=backfill
 #SBATCH --job-name=general_sa-openrlhf.train
 #SBATCH --mail-type=ALL
 #SBATCH --ntasks-per-node=1
 #SBATCH --nodes=1
-#SBATCH --time=2:00:00
+#SBATCH --time=7:59:00
 #SBATCH --output=./slurm/%j.out
 #SBATCH --error=./slurm/%j.err
 
 set -x
-CONTAINER="nvcr.io/r2kuatviomfd/internal-sandbox/torch-python:2.4.0-py3.10-cu12.2-v3"
+# CONTAINER="nvcr.io/r2kuatviomfd/internal-sandbox/torch-python:2.4.0-py3.10-cu12.2-v3"
+# CONTAINER="nvcr.io/nvidia/pytorch:24.07-py3"
+# CONTAINER="nvidia/cuda:12.8.0-cudnn-devel-ubuntu24.04"
+# CONTAINER="nvcr.io/nvidia/cuda:12.8.1-cudnn-devel-ubuntu22.04"
+# CONTAINER="gitlab-master.nvidia.com/dl/dgx/pytorch:main-py3-devel"
+# CONTAINER="/lustre/fsw/general_sa/larkz/docker_images/openrlhf.sqsh"
+# CONTAINER="nvcr.io/nvidia/pytorch:25.02-py3"
+CONTAINER="gitlab-master.nvidia.com:5005/dl/dgx/vllm:21279202-devel-amd64"
+# CONTAINER="gitlab-master.nvidia.com/dl/dgx/vllm:25.02-py3.23193774-base"
+# CONTAINER="gitlab-master.nvidia.com/dl/dgx/vllm:vllm_25.04-py3-base"
+# CONTAINER="/lustre/fsw/general_sa/larkz/docker_images/openrlhf_v2.sqsh"
+# CONTAINER="nvcr.io/nvidia/tritonserver:25.02-vllm-python-py3"
 # TODO Mount dir
 # CONTAINER="nvcr.io/nvidia/nemo:24.07"
 
@@ -30,20 +41,24 @@ export HYDRA_FULL_ERROR=1
 export NCCL_AVOID_RECORD_STREAMS=1
 #export ENROOT_ROOTFS_WRITABLE=1
 
+# && ray start --head --node-ip-address 0.0.0.0 --num-gpus 8 \
+# && sh examples/scripts/train_distill_grpo_ray_hybrid_engine.sh
+
+
 read -r -d '' cmd <<EOF
 echo "*******STARTING********" \
 && echo "---------------" \
 && echo "Starting training" \
-&& mkdir -p /app/openrlhf \
-&& cd /apps \
-&& pip install -e .\
-&& pip install vllm==0.7.3 \
-&& pip install math_verify==0.6.0 \
-&& ray start --head --node-ip-address 0.0.0.0 --num-gpus 8 \
-&& sh examples/scripts/train_distill_grpo_ray_hybrid_engine.sh 
+&& CUDA_DEVICE_MAX_CONNECTIONS=1 CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 \
+&& nvidia-smi \
+&& whoami \
+&& set -x \
+&& pwd \
+&& tail -f /dev/null
 EOF
 
 
-srun --container-image ${CONTAINER} --container-name ${WBPROJECT} --container-mounts ${MOUNTS} bash -c "${cmd}"
+# --container-remap-root --container-save=/lustre/fsw/general_sa/larkz/docker_images/openrlhf.sqsh
+srun --container-image ${CONTAINER} --container-name ${WBPROJECT} --container-mounts ${MOUNTS}  bash -c "${cmd}"
 
 set +x

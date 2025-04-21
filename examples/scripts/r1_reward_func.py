@@ -177,11 +177,11 @@ def reward_func(queries, prompts, labels):
 
     length_rewards = calculate_length_reward(responses)
     
-    final_rewards = []
-    for acc, length in zip(accuracy_rewards, length_rewards):
-        if acc == 0.0:
-            final_rewards.append(acc)
-        else:
-            final_rewards.append(acc + length)
-    
+    #final_rewards = []
+    #for acc, length in zip(accuracy_rewards, length_rewards):
+    #    if acc == 0.0:
+    #        final_rewards.append(acc)
+    #    else:
+    #        final_rewards.append(acc + length)
+    final_rewards = accuracy_rewards
     return torch.tensor(final_rewards)
